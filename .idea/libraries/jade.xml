@@ -1,8 +1,7 @@
 <component name="libraryTable">
   <library name="jade">
     <CLASSES>
-      <root url="jar://$PROJECT_DIR$/../Jade/jade/lib/jade.jar!/" />
-      <root url="jar://C:/Java Librarys/guava-31.1-jre.jar!/" />
+      <root url="jar://$USER_HOME$/OneDrive - Hogeschool Gent/school/4de jaar/bachlorproef/Workspace/Jade/jade/lib/jade.jar!/" />
     </CLASSES>
     <JAVADOC />
     <SOURCES />

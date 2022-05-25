@@ -23,6 +23,9 @@ public class Start {
         System.out.println("Launching a main-container..."+pMain);
         AgentContainer mainContainerRef = rt.createMainContainer(pMain);
 
+        //Monitoring Agent
+        createMonitoringAgents(mainContainerRef);
+
         //Own container
         String containerName;
         ProfileImpl pContainer;
@@ -32,9 +35,6 @@ public class Start {
         pContainer.setParameter(Profile.CONTAINER_NAME, containerName);
         System.out.println("Launching container " + containerName);
         AgentContainer containerRef = rt.createAgentContainer(pContainer);
-
-        //Monitoring Agent
-        createMonitoringAgents(mainContainerRef);
 
         System.out.println("platform OK");
 

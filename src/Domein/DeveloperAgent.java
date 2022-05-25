@@ -5,17 +5,13 @@ import Behaviour.RequestUserStory;
 import Items.*;
 import Items.WorkOrder;
 import Util.Utils;
-import jade.content.ContentElement;
-import jade.content.ContentManager;
 import jade.content.lang.Codec;
 import jade.content.lang.sl.SLCodec;
 import jade.content.onto.BeanOntologyException;
 import jade.content.onto.Ontology;
-import jade.content.onto.OntologyUtils;
 import jade.core.AID;
 import jade.core.Agent;
 import jade.core.behaviours.CyclicBehaviour;
-import jade.core.behaviours.OneShotBehaviour;
 import jade.core.behaviours.SequentialBehaviour;
 import jade.core.behaviours.SimpleBehaviour;
 import jade.domain.DFService;
@@ -24,11 +20,12 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 import jade.domain.FIPAException;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
-import jade.lang.acl.UnreadableException;
 
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Queue;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class DeveloperAgent extends Agent {
     private Utils utils = new Utils();
@@ -36,7 +33,8 @@ public class DeveloperAgent extends Agent {
     private Codec codec = new SLCodec();
 
     //Agent Tools
-    Queue<Story> toDo = new LinkedList<>();
+    private ArrayBlockingQueue<Story> toDo = new ArrayBlockingQueue<Story>(10, true);
+    private ArrayList<String> workLog = new ArrayList<>();
     private int skill = 3; //TODO: make random add learning curve
 
     private MessageTemplate template = MessageTemplate.and(
@@ -67,15 +65,15 @@ public class DeveloperAgent extends Agent {
             throw new RuntimeException(e);
         }
 
-        //Daily
-        int tick = 0;
-        //Main
-        CyclicBehaviour daily = new CyclicBehaviour(this) {
+
+        SimpleBehaviour daily = new SimpleBehaviour(this) {
             @Override
             public void action() {
 
                 //TODO: check if work is avalable.
                 //Work Avalable? NO
+
+                block(100);
 
                 if (!toDo.isEmpty()){
                     System.out.println("To do list " + myAgent.getLocalName() + toDo);
@@ -115,8 +113,14 @@ public class DeveloperAgent extends Agent {
                     addBehaviour(work);
                 }
             }
+            @Override
+            public boolean done() {
+                return false;
+            }
         };
 
+        //work 2 times a day. If work is not avalable request it. when it is requested receive it.
+        addBehaviour(daily);
         addBehaviour(daily);
 
     }
@@ -134,27 +138,39 @@ public class DeveloperAgent extends Agent {
         public void action() {
             ACLMessage msg = (ACLMessage) getDataStore().get(MessageReceiver.RECV_MSG);
 
+
             switch (msg.getPerformative()) {
                 case ACLMessage.AGREE:
                     Story story = null;
                     try {
-
                         WorkOrder wo = (WorkOrder) getContentManager().extractContent(msg);
                         story = wo.getStory();
-                        System.out.println();
-
-                        if (story != null) {
-                            toDo.add(story);
-                        } else {
-                            block();
-                        }
+                            if (story != null) {
+                                if (!workLog.contains(story.getName())) {
+                                    AtomicBoolean own = new AtomicBoolean(false);
+                                    Story finalStory = story;
+                                    toDo.forEach(e -> {
+                                        if (e.getName().equals(finalStory.getName())) {
+                                            own.set(true);
+                                        }
+                                    });
+                                    if (own.get() == false) {
+                                        toDo.add(story);
+                                        workLog.add(story.getName());
+                                    }
+                                } else {
+                                    block();
+                                }
+                            } else {
+                                block();
+                            }
                     } catch (Exception e) {
                         throw new RuntimeException(e);
                     }
                     break;
                 case ACLMessage.CANCEL:
                     System.out.println(myAgent.getLocalName() + "stops working");
-                    this.getParent().block();
+                    block();
                     break;
                 default:
                     block();
@@ -177,30 +193,32 @@ public class DeveloperAgent extends Agent {
         public void action() {
 
             int tick = 0;
-
-            Story story = toDo.peek();
+            block(100);
 
             if (!toDo.isEmpty()){
-                System.out.println(getLocalName() + " works on: " + story);
-                for (Task task : story.getTasks()) {
-                    if (!(tick >= 1)) {
-                        if (task.getSize() > 0) {
-                            System.out.println("Work to do: " + task.getSize());
-                            System.out.println("Work done: " + skill);
-                            task.setSize(task.getSize() - skill);
-                            System.out.println("Work left: " + task.getSize());
-                            tick++;
+                Story story = null;
+
+                    story = toDo.peek();
+
+                if (story.getTotalSize() != 0){
+                    //System.out.println(getLocalName() + " works on: " + story);
+                    for (Task task : story.getTasks()) {
+                        if (!(tick >= 1)) {
+                            if (task.getSize() > 0) {
+                                //System.out.println("Work to do: " + task.getSize());
+                                //System.out.println("Work done: " + skill);
+                                task.setSize(task.getSize() - skill);
+                                //System.out.println("Work left: " + task.getSize());
+                                tick++;
+                            }
                         }
+                    };
+                    if(story.getTotalSize() <= 0){
+                        workFinished(myAgent, story);
                     }
-                };
+                }
+
             }
-
-
-            if(story.getTotalSize() <= 0){
-                WorkFinished workFinished = new WorkFinished(myAgent, story);
-                addBehaviour(workFinished);
-            }
-
         }
 
 
@@ -210,43 +228,27 @@ public class DeveloperAgent extends Agent {
         }
     }
 
-    public class WorkFinished extends SimpleBehaviour {
+    private void workFinished(Agent myAgent, Story story) {
+        if (!toDo.isEmpty()) {
+            toDo.forEach((a) -> {
+                if (a.getName().equals(story.getName())) {
+                    toDo.remove(a);
 
-        Story story;
-        public WorkFinished(Agent a, Story story) {
-            super(a);
-            this.story = story;
-        }
+                    ACLMessage msg = new ACLMessage(ACLMessage.CONFIRM);
+                    msg.addReceiver(new AID(Controller.ScrumBoardAgent, AID.ISLOCALNAME));
+                    msg.setSender(myAgent.getAID());
+                    msg.setLanguage(codec.getName());
+                    msg.setContent(story.getName());
 
-        @Override
-        public void action() {
-            System.out.println(myAgent.getLocalName() + " has finished working on " + story);
-
-            toDo.remove();
-
-            ACLMessage msg = new ACLMessage(ACLMessage.CONFIRM);
-            msg.addReceiver(new AID(Controller.ScrumBoardAgent, AID.ISLOCALNAME));
-            msg.setSender(myAgent.getAID());
-            msg.setLanguage(codec.getName());
-            msg.setOntology(ontology.getName());
-
-            WorkOrder wo = new WorkOrder();
-            wo.setStory(story);
-            wo.setOwner(msg.getSender());
-
-            try {
-                getContentManager().fillContent(msg, wo);
-                System.out.println(msg);
-                send(msg);
-            } catch (Exception e) {
-                throw new RuntimeException(e);
-            }
-
-        }
-
-        @Override
-        public boolean done() {
-            return false;
+                    try {
+                        toDo.size();
+                        send(msg);
+                    } catch (Exception e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
         }
     }
-}
+ }
+
