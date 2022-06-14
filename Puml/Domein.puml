@@ -1,0 +1,109 @@
+@startuml
+class Behaviour.MessageReceiver {
++ {static} String RECV_MSG
+- boolean finished
++ void action()
++ boolean done()
+}
+class Behaviour.RequestUserStory {
+- ContentManager manager
+- MessageTemplate template
+- Ontology onto
+- AID receiver
++ void action()
+}
+class Domein.ProductOwnerAgent {
+- {static} long serialVersionUID
+- Utils utils
+# void setup()
+}
+class Domein.ScrumBoardAgent {
+- Utils utils
+- {static} int nbStoriesToGen
+- {static} int nbStoriesInSprint
+- {static} int nbTasks
+- int nbStoriesSent
+- int nbStoriesRecived
+- ArrayList<Story> stories
+- ArrayBlockingQueue<Story> sprintQueue
+- Ontology ontology
+- Codec codec
+# void setup()
+- void listFillere()
+- void fillSprintQueue()
++ int getTotalSize(State)
++ void ScrumBoardStatus()
++ Story getFirstFreeStory(AID)
+}
+class Domein.ScrumBoardAgent.checkSprintComplete {
++ void action()
++ boolean done()
+}
+class Domein.ScrumBoardAgent.ScrumBoardMessageHandler {
+- ScrumBoardAgent mySBAgent
++ void action()
++ boolean done()
+}
+class Domein.ScrumBoardAgent.EndSprint {
++ void action()
++ boolean done()
+}
+class Domein.ScrumMasterAgent {
+- Utils utils
+# void setup()
+}
+class Domein.ScrumOntology {
++ {static} String ONTOLOGY_NAME
+- {static} Ontology INSTANCE
++ {static} Ontology getInstance()
+}
+class Domein.DeveloperAgent {
+- Utils utils
+- Ontology ontology
+- Codec codec
+- ArrayBlockingQueue<Story> toDo
+- ArrayList<String> workLog
+- int skill
+- MessageTemplate template
+# void setup()
+- void workFinished(Agent,Story)
+}
+class Domein.DeveloperAgent.DeveloperMessageHandler {
+- DeveloperAgent mySBAgent
++ void action()
++ boolean done()
+}
+class Domein.DeveloperAgent.Work {
++ void action()
++ boolean done()
+}
+class Domein.Controller {
+- Utils utils
++ {static} int nbDevAgents
++ {static} String DevAgentName
++ {static} String ProductOwnerAgent
++ {static} String ScrumBoardAgent
++ {static} String ScrumMasterAgent
+# void setup()
+}
+
+
+jade.core.behaviours.SimpleBehaviour <|-- Behaviour.MessageReceiver
+jade.core.behaviours.OneShotBehaviour <|-- Behaviour.RequestUserStory
+jade.core.Agent <|-- Domein.ProductOwnerAgent
+jade.core.Agent <|-- Domein.ScrumBoardAgent
+Domein.ScrumBoardAgent +.. Domein.ScrumBoardAgent.checkSprintComplete
+Domein.SimpleBehaviour <|-- Domein.ScrumBoardAgent.checkSprintComplete
+Domein.ScrumBoardAgent +.. Domein.ScrumBoardAgent.ScrumBoardMessageHandler
+Domein.SimpleBehaviour <|-- Domein.ScrumBoardAgent.ScrumBoardMessageHandler
+Domein.ScrumBoardAgent +.. Domein.ScrumBoardAgent.EndSprint
+Domein.SimpleBehaviour <|-- Domein.ScrumBoardAgent.EndSprint
+jade.core.Agent <|-- Domein.ScrumMasterAgent
+jade.content.onto.BeanOntology <|-- Domein.ScrumOntology
+jade.core.Agent <|-- Domein.DeveloperAgent
+Domein.DeveloperAgent +.. Domein.DeveloperAgent.DeveloperMessageHandler
+Domein.SimpleBehaviour <|-- Domein.DeveloperAgent.DeveloperMessageHandler
+Domein.DeveloperAgent +.. Domein.DeveloperAgent.Work
+Domein.SimpleBehaviour <|-- Domein.DeveloperAgent.Work
+jade.core.Agent <|-- Domein.Controller
+@enduml

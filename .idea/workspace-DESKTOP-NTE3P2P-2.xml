@@ -1,0 +1,166 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="6b975f3d-a7b2-4d48-b8d3-7e096ed63cc0" name="Default Changelist" comment="" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Enum" />
+        <option value="JavaFXApplication" />
+        <option value="Class" />
+      </list>
+    </option>
+  </component>
+  <component name="HighlightingSettingsPerFile">
+    <setting file="file://$PROJECT_DIR$/src/Domein/Controller.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/Domein/DeveloperAgent.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/Domein/ProductOwnerAgent.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/Domein/ScrumMasterAgent.java" root0="FORCE_HIGHLIGHTING" />
+    <setting file="file://$PROJECT_DIR$/src/Items/Task.java" root0="FORCE_HIGHLIGHTING" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProblemsViewState">
+    <option name="selectedTabId" value="CurrentFile" />
+  </component>
+  <component name="ProjectId" id="28hoOxEAzYxFbWM0CPQvgBkczGB" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "last_opened_file_path": "C:/Java Librarys/guava-31.1-jre.jar",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "project.structure.last.edited": "Project",
+    "project.structure.proportion": "0.15",
+    "project.structure.side.proportion": "0.2",
+    "run.code.analysis.last.selected.profile": "pProject Default",
+    "settings.editor.selected.configurable": "configurable.group.editor"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\michi\IdeaProjects\Bachlorproef\src\GUI" />
+      <recent name="C:\Users\michi\IdeaProjects\Bachlorproef\src\Util" />
+      <recent name="C:\Users\michi\IdeaProjects\Bachlorproef\src\Enums" />
+      <recent name="C:\Users\michi\IdeaProjects\Bachlorproef\src" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Application.Main.Start">
+    <configuration name="Jade" type="Application" factoryName="Application">
+      <option name="MAIN_CLASS_NAME" value="jade.Boot" />
+      <module name="Bachlorproef" />
+      <option name="PROGRAM_PARAMETERS" value="-gui Controller:Domein.Controller" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="Main.Start" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="ALTERNATIVE_JRE_PATH" value="18" />
+      <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+      <option name="MAIN_CLASS_NAME" value="Main.Start" />
+      <module name="Bachlorproef" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="Main.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="start" type="Application" factoryName="Application" temporary="true" nameIsGenerated="true">
+      <option name="MAIN_CLASS_NAME" value="main.start" />
+      <module name="Bachlorproef" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="main.*" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="Application.Jade" />
+      <item itemvalue="Application.Main.Start" />
+      <item itemvalue="Application.start" />
+    </list>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Application.Main.Start" />
+        <item itemvalue="Application.start" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SvnConfiguration">
+    <configuration />
+  </component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="6b975f3d-a7b2-4d48-b8d3-7e096ed63cc0" name="Default Changelist" comment="" />
+      <created>1651678149461</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1651678149461</updated>
+      <workItem from="1651678152110" duration="4113000" />
+      <workItem from="1651827910450" duration="4090000" />
+      <workItem from="1651834819983" duration="5383000" />
+      <workItem from="1651964222541" duration="670000" />
+      <workItem from="1652082401815" duration="15000" />
+      <workItem from="1652286971295" duration="11894000" />
+      <workItem from="1652357963864" duration="13711000" />
+      <workItem from="1652784272873" duration="565000" />
+      <workItem from="1652784862233" duration="1110000" />
+      <workItem from="1652787255110" duration="5360000" />
+      <workItem from="1652997543816" duration="599000" />
+      <workItem from="1652998233110" duration="1665000" />
+      <workItem from="1653032783381" duration="1983000" />
+      <workItem from="1653036336077" duration="7347000" />
+      <workItem from="1653046560922" duration="38266000" />
+      <workItem from="1653328298156" duration="11673000" />
+      <workItem from="1653378512615" duration="79000" />
+      <workItem from="1653391291431" duration="5553000" />
+      <workItem from="1653403889038" duration="393000" />
+      <workItem from="1653404817982" duration="415000" />
+    </task>
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <breakpoint enabled="true" type="java-exception">
+          <properties class="jade.content.onto.OntologyException" package="jade.content.onto" />
+          <option name="timeStamp" value="1" />
+        </breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
+  </component>
+  <component name="XSLT-Support.FileAssociations.UIState">
+    <expand />
+    <select />
+  </component>
+</project>

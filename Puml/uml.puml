@@ -1,0 +1,199 @@
+@startuml
+class Items.WorkOrder {
+- {static} long serialVersionUID
+- AID owner
+- Story item
++ AID getOwner()
++ void setOwner(AID)
++ Story getStory()
++ void setStory(Story)
+}
+class Behaviour.MessageReceiver {
++ {static} String RECV_MSG
+- boolean finished
++ void action()
++ boolean done()
+}
+class Main.Start {
+- {static} String PLATFORM_IP
+- {static} int PLATFORM_PORT
+- {static} String PLATFORM_ID
+- {static} Utils utils
++ {static} void main(String[])
+- {static} void createMonitoringAgents(ContainerController)
+}
+class Behaviour.RequestUserStory {
+- ContentManager manager
+- MessageTemplate template
+- Ontology onto
+- AID receiver
++ void action()
+}
+class Util.Utils {
++ Task taskGen(String)
++ void createOneAgent(ContainerController,String,String,Object[])
++ void pintAgentIntel(Agent)
++ ArrayList<Story> findAndReplace(Story,ArrayList<Story>)
+}
+class Domein.ScrumMasterAgent {
+- Utils utils
+# void setup()
+}
+class Util.Functions {
+}
+class Domein.ScrumOntology {
++ {static} String ONTOLOGY_NAME
+- {static} Ontology INSTANCE
++ {static} Ontology getInstance()
+}
+class Items.Story {
+- {static} long serialVersionUID
+- String name
++ ArrayList<Task> tasks
+- int priority
+- State state
+- AID workingagent
++ String toString()
++ int getTotalSize()
++ String getName()
++ void setName(String)
++ int getPriority()
++ void setPriority(int)
++ State getState()
++ void setState(State)
++ AID getWorkingagent()
++ void setWorkingagent(AID)
++ ArrayList<Task> getTasks()
++ void setTasks(ArrayList<Task>)
+}
+class Domein.DeveloperAgent {
+- Utils utils
+- Ontology ontology
+- Codec codec
+- ArrayBlockingQueue<Story> toDo
+- ArrayList<String> workLog
+- int skill
+- MessageTemplate template
+# void setup()
+- void workFinished(Agent,Story)
+}
+class Domein.DeveloperAgent.DeveloperMessageHandler {
+- DeveloperAgent mySBAgent
++ void action()
++ boolean done()
+}
+class Domein.DeveloperAgent.Work {
++ void action()
++ boolean done()
+}
+class Domein.Controller {
+- Utils utils
++ {static} int nbDevAgents
++ {static} String DevAgentName
++ {static} String ProductOwnerAgent
++ {static} String ScrumBoardAgent
++ {static} String ScrumMasterAgent
+# void setup()
+}
+class Items.Story {
+- {static} long serialVersionUID
+- String name
++ ArrayList<Task> tasks
+- int priority
+- State state
+- AID workingagent
++ String toString()
++ int getTotalSize()
++ String getName()
++ void setName(String)
++ int getPriority()
++ void setPriority(int)
++ State getState()
++ void setState(State)
++ AID getWorkingagent()
++ void setWorkingagent(AID)
++ ArrayList<Task> getTasks()
++ void setTasks(ArrayList<Task>)
+}
+class Domein.ProductOwnerAgent {
+- {static} long serialVersionUID
+- Utils utils
+# void setup()
+}
+class Domein.ScrumBoardAgent {
+- Utils utils
+- {static} int nbStoriesToGen
+- {static} int nbStoriesInSprint
+- {static} int nbTasks
+- int nbStoriesSent
+- int nbStoriesRecived
+- ArrayList<Story> stories
+- ArrayBlockingQueue<Story> sprintQueue
+- Ontology ontology
+- Codec codec
+# void setup()
+- void listFillere()
+- void fillSprintQueue()
++ int getTotalSize(State)
++ void ScrumBoardStatus()
++ Story getFirstFreeStory(AID)
+}
+class Domein.ScrumBoardAgent.RequestProductBacklog {
++ void action()
++ boolean done()
+}
+class Domein.ScrumBoardAgent.checkSprintComplete {
++ void action()
++ boolean done()
+}
+class Domein.ScrumBoardAgent.ScrumBoardMessageHandler {
+- ScrumBoardAgent mySBAgent
++ void action()
++ boolean done()
+}
+class Domein.ScrumBoardAgent.EndSprint {
++ void action()
++ boolean done()
+}
+enum Enums.State {
++  Product
++  Sprint
++  Doing
++  Done
+}
+class Items.Task {
+~ String naam
+~ int size
++ String toString()
++ String getNaam()
++ void setNaam(String)
++ int getSize()
++ void setSize(int)
+}
+
+
+jade.content.Predicate <|.. Items.WorkOrder
+jade.core.behaviours.SimpleBehaviour <|-- Behaviour.MessageReceiver
+jade.core.behaviours.OneShotBehaviour <|-- Behaviour.RequestUserStory
+jade.core.Agent <|-- Domein.ScrumMasterAgent
+jade.content.onto.BeanOntology <|-- Domein.ScrumOntology
+jade.content.Concept <|.. Items.Story
+jade.core.Agent <|-- Domein.DeveloperAgent
+Domein.DeveloperAgent +.. Domein.DeveloperAgent.DeveloperMessageHandler
+Domein.SimpleBehaviour <|-- Domein.DeveloperAgent.DeveloperMessageHandler
+Domein.DeveloperAgent +.. Domein.DeveloperAgent.Work
+Domein.SimpleBehaviour <|-- Domein.DeveloperAgent.Work
+jade.core.Agent <|-- Domein.Controller
+jade.content.Concept <|.. Items.Story
+jade.core.Agent <|-- Domein.ProductOwnerAgent
+jade.core.Agent <|-- Domein.ScrumBoardAgent
+Domein.ScrumBoardAgent +.. Domein.ScrumBoardAgent.RequestProductBacklog
+Domein.SimpleBehaviour <|-- Domein.ScrumBoardAgent.RequestProductBacklog
+Domein.ScrumBoardAgent +.. Domein.ScrumBoardAgent.checkSprintComplete
+Domein.SimpleBehaviour <|-- Domein.ScrumBoardAgent.checkSprintComplete
+Domein.ScrumBoardAgent +.. Domein.ScrumBoardAgent.ScrumBoardMessageHandler
+Domein.SimpleBehaviour <|-- Domein.ScrumBoardAgent.ScrumBoardMessageHandler
+Domein.ScrumBoardAgent +.. Domein.ScrumBoardAgent.EndSprint
+Domein.SimpleBehaviour <|-- Domein.ScrumBoardAgent.EndSprint
+jade.content.Concept <|.. Items.Task
+@enduml

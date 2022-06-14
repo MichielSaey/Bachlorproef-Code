@@ -1,17 +1,18 @@
 package Domein;
 
 import Behaviour.MessageReceiver;
-import Behaviour.RequestUserStory;
+import Behaviour.Request;
 import Items.*;
-import Items.WorkOrder;
+import Items.PreWorkOrder;
 import Util.Utils;
+
 import jade.content.lang.Codec;
 import jade.content.lang.sl.SLCodec;
 import jade.content.onto.BeanOntologyException;
 import jade.content.onto.Ontology;
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.SequentialBehaviour;
 import jade.core.behaviours.SimpleBehaviour;
 import jade.domain.DFService;
@@ -22,10 +23,11 @@ import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.Queue;
+import java.util.Random;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import static Domein.Controller.*;
 
 public class DeveloperAgent extends Agent {
     private Utils utils = new Utils();
@@ -33,9 +35,12 @@ public class DeveloperAgent extends Agent {
     private Codec codec = new SLCodec();
 
     //Agent Tools
+    private boolean finished = false;
+    private boolean sprintStarted = false;
     private ArrayBlockingQueue<Story> toDo = new ArrayBlockingQueue<Story>(10, true);
     private ArrayList<String> workLog = new ArrayList<>();
-    private int skill = 3; //TODO: make random add learning curve
+    Random random = new Random();
+    private int skill = random.nextInt((10 - 1) + 1) + 1; //TODO: make random add learning curve
 
     private MessageTemplate template = MessageTemplate.and(
             MessageTemplate.MatchSender(this.getAID()),
@@ -55,7 +60,7 @@ public class DeveloperAgent extends Agent {
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
         ServiceDescription sd = new ServiceDescription();
-        sd.setType(Controller.DevAgentName);
+        sd.setType(Controller.devAgentName);
         sd.setName(getLocalName());
         dfd.addServices(sd);
 
@@ -65,86 +70,32 @@ public class DeveloperAgent extends Agent {
             throw new RuntimeException(e);
         }
 
+        Behaviour wait = new Wait(this);
 
-        SimpleBehaviour daily = new SimpleBehaviour(this) {
-            @Override
-            public void action() {
-
-                //TODO: check if work is avalable.
-                //Work Avalable? NO
-
-                block(100);
-
-                if (!toDo.isEmpty()){
-                    System.out.println("To do list " + myAgent.getLocalName() + toDo);
-
-                }
-
-                int todoSize = 0;
-                for (Story story : toDo) {
-                    todoSize += story.getTotalSize();
-                }
-
-                if (todoSize == 0 && toDo.isEmpty()) {
-                    SequentialBehaviour requestUserStoryCom = new SequentialBehaviour(myAgent);
-
-                    //Sub to request work
-                    RequestUserStory requestUserStory = new RequestUserStory(myAgent, template, new AID(Controller.ScrumBoardAgent, AID.ISLOCALNAME), ontology);
-                    MessageReceiver receiver = new MessageReceiver();
-                    DeveloperMessageHandler messageHandler = new DeveloperMessageHandler(myAgent);
-
-                    //DataStore
-                    requestUserStory.setDataStore(requestUserStoryCom.getDataStore());
-                    receiver.setDataStore(requestUserStoryCom.getDataStore());
-                    messageHandler.setDataStore(requestUserStoryCom.getDataStore());
-
-                    //Add To Main
-                    requestUserStoryCom.addSubBehaviour(requestUserStory);
-                    requestUserStoryCom.addSubBehaviour(receiver);
-                    requestUserStoryCom.addSubBehaviour(messageHandler);
-
-                    addBehaviour(requestUserStoryCom);
-                }
-
-                //Work Avalable? YES
-                if (!toDo.isEmpty()){
-                    Work work = new Work(myAgent);
-
-                    addBehaviour(work);
-                }
-            }
-            @Override
-            public boolean done() {
-                return false;
-            }
-        };
-
-        //work 2 times a day. If work is not avalable request it. when it is requested receive it.
-        addBehaviour(daily);
-        addBehaviour(daily);
+        addBehaviour(wait);
 
     }
 
     public class DeveloperMessageHandler extends SimpleBehaviour {
-
-        private DeveloperAgent mySBAgent;
+        private DeveloperAgent myDEAgent;
 
         DeveloperMessageHandler(Agent agent) {
             super(agent);
-            this.mySBAgent = (DeveloperAgent) agent;
+            this.myDEAgent = (DeveloperAgent) agent;
         }
 
         @Override
         public void action() {
-            ACLMessage msg = (ACLMessage) getDataStore().get(MessageReceiver.RECV_MSG);
+            ACLMessage msg = receive();
 
-
-            switch (msg.getPerformative()) {
-                case ACLMessage.AGREE:
-                    Story story = null;
-                    try {
-                        WorkOrder wo = (WorkOrder) getContentManager().extractContent(msg);
-                        story = wo.getStory();
+            if (msg != null) {
+                System.out.println(myDEAgent.getAID().getLocalName() + " recived message " + msg);
+                switch (msg.getPerformative()) {
+                    case ACLMessage.AGREE:
+                        Story story = null;
+                        try {
+                            PreWorkOrder wo = (PreWorkOrder) getContentManager().extractContent(msg);
+                            story = wo.getStory();
                             if (story != null) {
                                 if (!workLog.contains(story.getName())) {
                                     AtomicBoolean own = new AtomicBoolean(false);
@@ -164,17 +115,57 @@ public class DeveloperAgent extends Agent {
                             } else {
                                 block();
                             }
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                    break;
-                case ACLMessage.CANCEL:
-                    System.out.println(myAgent.getLocalName() + "stops working");
-                    block();
-                    break;
-                default:
-                    block();
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                        break;
+                    case ACLMessage.REQUEST:
+                        ACLMessage reply = msg.createReply();
+                        reply.setPerformative(ACLMessage.AGREE);
+                        reply.setLanguage(codec.getName());
+                        reply.setContent(String.valueOf(myDEAgent.skill));
+                        send(reply);
+                        block(3000);
+                        finished = true;
+                        break;
+                    case ACLMessage.INFORM:
+                        sprintStarted = true;
+                        finished = true;
+                    /*case ACLMessage.CANCEL:
+                        System.out.println(myAgent.getLocalName() + "stops working");
+                        block();
+                        break;*/
+                    default:
+                        block();
+                }
             }
+
+        }
+
+        @Override
+        public boolean done() {
+            return finished;
+        }
+    }
+    public class Wait extends Behaviour {
+        Wait(Agent agent) {
+            super(agent);
+        }
+        @Override
+        public void action() {
+            SequentialBehaviour running = new SequentialBehaviour();
+
+            SimpleBehaviour messageHandler = new DeveloperMessageHandler(myAgent);
+            messageHandler.setDataStore(running.getDataStore());
+            running.addSubBehaviour(messageHandler);
+
+            if (sprintStarted) {
+                sprintStarted = false;
+                Daily daily = new Daily(myAgent);
+                running.addSubBehaviour(daily);
+            }
+
+            addBehaviour(running);
         }
 
         @Override
@@ -182,26 +173,82 @@ public class DeveloperAgent extends Agent {
             return false;
         }
     }
+    public class Daily extends Behaviour {
+        //work 2 times a day. If work is not avalable request it. when it is requested receive it.
+        private int tick = 1;
 
+        public Daily(Agent a) {
+            super(a);
+            finished = false;
+        }
+
+        @Override
+        public void action() {
+            block(1000);
+
+            if (!toDo.isEmpty()) {
+                System.out.println("To do list " + myAgent.getLocalName() + toDo);
+            }
+
+            int todoSize = 0;
+            for (Story story : toDo) {
+                todoSize += story.getTotalSize();
+            }
+
+            if (todoSize == 0 && toDo.isEmpty()) {
+                SequentialBehaviour requestUserStoryCom = new SequentialBehaviour(myAgent);
+
+                //Sub to request work
+                Request requestUserStory = new Request(myAgent, scrumBoardAID, ontology, "story");
+                DeveloperMessageHandler messageHandler = new DeveloperMessageHandler(myAgent);
+
+                //DataStore
+                requestUserStory.setDataStore(requestUserStoryCom.getDataStore());
+                messageHandler.setDataStore(requestUserStoryCom.getDataStore());
+
+                //Add To Main
+                requestUserStoryCom.addSubBehaviour(requestUserStory);
+                requestUserStoryCom.addSubBehaviour(messageHandler);
+
+                addBehaviour(requestUserStoryCom);
+            }
+
+            tick++;
+
+            //Work Avalable? YES
+            if (!toDo.isEmpty()) {
+                Work work = new Work(myAgent);
+
+                addBehaviour(work);
+            }
+
+        }
+
+        @Override
+        public boolean done() {
+            /*if (tick == 10) {
+                tick = 0;
+                return true;
+            }*/
+            return false;
+        }
+    }
     public class Work extends SimpleBehaviour {
 
         public Work(Agent a) {
             super(a);
         }
-
+        int tick = 0;
         @Override
         public void action() {
-
-            int tick = 0;
             block(100);
-
-            if (!toDo.isEmpty()){
+            if (!toDo.isEmpty()) {
                 Story story = null;
 
-                    story = toDo.peek();
+                story = toDo.peek();
 
-                if (story.getTotalSize() != 0){
-                    //System.out.println(getLocalName() + " works on: " + story);
+                if (story.getTotalSize() != 0) {
+                    System.out.println(getLocalName() + " works on: " + story.getName() + " with a work size of " + story.getTotalSize());
                     for (Task task : story.getTasks()) {
                         if (!(tick >= 1)) {
                             if (task.getSize() > 0) {
@@ -212,9 +259,12 @@ public class DeveloperAgent extends Agent {
                                 tick++;
                             }
                         }
-                    };
-                    if(story.getTotalSize() <= 0){
+                    }
+                    ;
+                    if (story.getTotalSize() <= 0) {
                         workFinished(myAgent, story);
+                        toDo.remove(story);
+                        System.out.println(getLocalName() + " finished work on: " + story.getName());
                     }
                 }
 
@@ -224,10 +274,13 @@ public class DeveloperAgent extends Agent {
 
         @Override
         public boolean done() {
-            return false;
+            if (tick >= 2) {
+                return true;
+            } else {
+                return false;
+            }
         }
     }
-
     private void workFinished(Agent myAgent, Story story) {
         if (!toDo.isEmpty()) {
             toDo.forEach((a) -> {
@@ -235,7 +288,7 @@ public class DeveloperAgent extends Agent {
                     toDo.remove(a);
 
                     ACLMessage msg = new ACLMessage(ACLMessage.CONFIRM);
-                    msg.addReceiver(new AID(Controller.ScrumBoardAgent, AID.ISLOCALNAME));
+                    msg.addReceiver(new AID(Controller.scrumBoardAgent, AID.ISLOCALNAME));
                     msg.setSender(myAgent.getAID());
                     msg.setLanguage(codec.getName());
                     msg.setContent(story.getName());
@@ -250,5 +303,5 @@ public class DeveloperAgent extends Agent {
             });
         }
     }
- }
+}
 

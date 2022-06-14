@@ -1,23 +1,27 @@
 package Domein;
 
-import Behaviour.MessageReceiver;
+import Behaviour.Request;
 import Enums.State;
 import Items.*;
+
+import static Domein.Controller.*;
 
 import jade.content.lang.Codec;
 import jade.content.lang.sl.SLCodec;
 import jade.content.onto.BeanOntologyException;
 import jade.content.onto.Ontology;
+
+import jade.content.onto.OntologyException;
+import jade.content.onto.OntologyUtils;
 import jade.core.AID;
 import jade.core.Agent;
 
 import java.util.ArrayList;
-import java.util.Random;
+import java.util.Arrays;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import Util.Utils;
-import jade.core.behaviours.CyclicBehaviour;
+import jade.core.behaviours.Behaviour;
 import jade.core.behaviours.SequentialBehaviour;
 import jade.core.behaviours.SimpleBehaviour;
 import jade.domain.FIPAAgentManagement.DFAgentDescription;
@@ -27,14 +31,20 @@ import jade.lang.acl.ACLMessage;
 public class ScrumBoardAgent extends Agent {
 
     private final Utils utils = new Utils();
-    private static final int nbStoriesToGen = 20;
-    private static final int nbStoriesInSprint = 10;
-    private static final int nbTasks = 5;
+    //adress book
     private int nbStoriesSent = 0;
     private int nbStoriesRecived = 0;
-    private ArrayList<Story> stories = new ArrayList<>();
+    private Boolean finished = false;
+    private boolean projectFinished = false;
+    private boolean sprintFinished = false;
+    private boolean receivedSpringBacklog = false;
+    private int sprintNr = 0;
+    //Board
+    private ArrayList<Story> productBackLog = new ArrayList<>();
+    private static final int nbStoriesInSprint = 10;
+    private int[] devSkills = new int[nbDevAgents];
+    ArrayList<String> devNames = new ArrayList<>();
     private ArrayBlockingQueue<Story> sprintQueue = new ArrayBlockingQueue<Story>(nbStoriesInSprint, true);
-
     private Ontology ontology = ScrumOntology.getInstance();
     private Codec codec = new SLCodec();
 
@@ -51,76 +61,79 @@ public class ScrumBoardAgent extends Agent {
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
         ServiceDescription sd = new ServiceDescription();
-        sd.setType(Controller.ScrumBoardAgent);
+        sd.setType(Controller.scrumBoardAgent);
         sd.setName(getLocalName());
         dfd.addServices(sd);
 
+        try {
+            OntologyUtils.exploreOntology(ontology);
+        } catch (OntologyException e) {
+            throw new RuntimeException(e);
+        }
+
 //		Data
-        listFillere();
+/*        listFillere();
         fillSprintQueue();
-        ScrumBoardStatus();
+        ScrumBoardStatus();*/
 
-        //Repeater
-        CyclicBehaviour running = new CyclicBehaviour(this) {
-            @Override
-            public void action() {
+        //RunningBehaviour
+        SequentialBehaviour running = new SequentialBehaviour(this);
 
-                int workLeft = nbStoriesInSprint - nbStoriesRecived;
+        //Request Product backlog
+        Behaviour requestProductBacklog = new RequestProductBacklog(this);
+        requestProductBacklog.setDataStore(running.getDataStore());
 
-                if (workLeft != nbStoriesInSprint){
-                    System.out.println("stories left: " + workLeft);
-                }
+        //Sprint
+        Behaviour sprint = new Sprint(this);
 
-                    //Main
-                    SequentialBehaviour behaviour = new SequentialBehaviour(myAgent);
+        //Add sub behaviour to running behaviour
+        running.addSubBehaviour(requestProductBacklog);
+        running.addSubBehaviour(sprint);
 
-                    //Sub
-                    SimpleBehaviour msgR = new MessageReceiver();
-                    SimpleBehaviour sbmh = new ScrumBoardMessageHandler(myAgent);
-                    //SimpleBehaviour workComplete = new checkSprintComplete(myAgent);
+       /* int workLeft = nbStoriesInSprint - nbStoriesRecived;
 
-                    //DataStore
-                    msgR.setDataStore(behaviour.getDataStore());
-                    sbmh.setDataStore(behaviour.getDataStore());
+        if (workLeft != nbStoriesInSprint){
+            System.out.println("stories left: " + workLeft);
+        }
 
-                    //Add To Main
-                    behaviour.addSubBehaviour(msgR);
-                    behaviour.addSubBehaviour(sbmh);
+        //Main
+        SequentialBehaviour behaviour = new SequentialBehaviour(myAgent);
 
-                    //Run
-                    addBehaviour(behaviour);
-                if (workLeft == 0) {
-                    SimpleBehaviour endSprint = new EndSprint(myAgent);
-                    addBehaviour(endSprint);
-                    System.out.println("Sprint finished");
-                    this.getParent().block();
-                }
+        //Request Product Backlog
 
-            }
-        };
+
+        //Sub
+        SimpleBehaviour msgR = new MessageReceiver();
+        SimpleBehaviour sbmh = new ScrumBoardMessageHandler(myAgent);
+        //SimpleBehaviour workComplete = new checkSprintComplete(myAgent);
+
+        //DataStore
+        msgR.setDataStore(behaviour.getDataStore());
+        sbmh.setDataStore(behaviour.getDataStore());
+
+        //Add To Main
+        behaviour.addSubBehaviour(msgR);
+        behaviour.addSubBehaviour(sbmh);
+
+        //Run
+        addBehaviour(behaviour);
+        if (workLeft == 0) {
+            SimpleBehaviour endSprint = new EndSprint(myAgent);
+            addBehaviour(endSprint);
+            System.out.println("Sprint finished");
+            this.getParent().block();
+        }*/
 
         //Run
         addBehaviour(running);
-    }
 
-    public class checkSprintComplete extends SimpleBehaviour{
-        public checkSprintComplete(Agent a) {
-            super(a);
-        }
-
-        @Override
-        public void action() {
-
-        }
-
-        @Override
-        public boolean done() {
-            return false;
-        }
+        System.out.println(productBackLog);
     }
 
     public class ScrumBoardMessageHandler extends SimpleBehaviour {
         private ScrumBoardAgent mySBAgent;
+
+
         ScrumBoardMessageHandler(Agent agent) {
             super(agent);
             this.mySBAgent = (ScrumBoardAgent) agent;
@@ -128,69 +141,344 @@ public class ScrumBoardAgent extends Agent {
 
         @Override
         public void action() {
-            ACLMessage msg = (ACLMessage) getDataStore().get(MessageReceiver.RECV_MSG);
-            ACLMessage rmsg = msg.createReply();
-
+            block(1000);
+            ACLMessage msg = receive();
+            //build list for dev agent names. if a skill is received, add it to the list on the dev number - 1 position
             Story story;
-            WorkOrder wo;
+            PreWorkOrder wo;
+            if (msg != null) {
 
-            switch (msg.getPerformative()) {
-                case ACLMessage.REQUEST:
-                    if(sprintQueue.size() != 0) {
-                        //sprintQueue.
-                        try {
-                            story = sprintQueue.take();
-                        } catch (InterruptedException e) {
-                            throw new RuntimeException(e);
+                ACLMessage rmsg = msg.createReply();
+
+                System.out.println(mySBAgent.getAID().getLocalName() + " recived message " + msg);
+                switch (msg.getPerformative()) {
+                    case ACLMessage.AGREE:
+                        switch (msg.getSender().getLocalName()) {
+                            case productOwnerAgent:
+                                try {
+                                    PreBackLog preBackLog = (PreBackLog) getContentManager().extractContent(msg);
+                                    productBackLog = preBackLog.getStoryArrayList();
+                                    System.out.println("Product Backlog recived");
+                                    System.out.println(productBackLog);
+                                    finished = true;
+                                } catch (Exception e) {
+                                    System.out.println("Error: " + e);
+                                }
+                                break;
+                            case scrumMasterAgent:
+                                try {
+                                    PreBackLog preBackLog = (PreBackLog) getContentManager().extractContent(msg);
+                                    for (Story story1 : preBackLog.getStoryArrayList()) {
+                                        sprintQueue.add(story1);
+                                        if (productBackLog.contains(story1)) {
+                                            productBackLog.remove(story1);
+                                        }
+                                    }
+                                    System.out.println("Sprint Backlog recived");
+                                    System.out.println(sprintQueue);
+                                    receivedSpringBacklog = true;
+                                    finished = true;
+                                } catch (Exception e) {
+                                    System.out.println("Error: " + e);
+                                }
+                                break;
+                            default:
+                                if (msg.getSender().getLocalName().contains(devAgentName)) {
+
+                                    if (!(devNames.contains(msg.getSender().getLocalName()))) {
+                                        devNames.add(msg.getSender().getLocalName());
+                                        int devNumber = Integer.parseInt(msg.getSender().getLocalName().substring(devAgentName.length()));
+                                        devSkills[devNumber - 1] = Integer.parseInt(msg.getContent());
+                                        System.out.println("Dev " + devNumber + " recived skill: " + devSkills[devNumber - 1]);
+
+                                    }
+                                    System.out.println(devNames);
+                                    if (devNames.size() == nbDevAgents) {
+                                        System.out.println("received skills from all devs");
+                                        for (int i = 0; i < devSkills.length; i++) {
+                                            System.out.println("Dev " + (i + 1) + " skill: " + devSkills[i]);
+                                        }
+                                        finished = true;
+                                    }
+                                }
+                                break;
                         }
-
-                        rmsg.setPerformative(ACLMessage.AGREE);
-                        rmsg.addReceiver(msg.getSender());
-                        rmsg.setSender(myAgent.getAID());
-                        rmsg.setLanguage(codec.getName());
-                        rmsg.setOntology(ontology.getName());
-
-                        if (story != null) {
-                            wo = new WorkOrder();
-                            wo.setStory(story);
-                            wo.setOwner(msg.getSender());
+                        break;
+                    case ACLMessage.REQUEST:
+                        if (sprintQueue.size() != 0) {
+                            //sprintQueue.
                             try {
-                                getContentManager().fillContent(rmsg, wo);
-                                //System.out.println(rmsg);
-                                send(rmsg);
-                            } catch (Exception e) {
+                                story = sprintQueue.take();
+                            } catch (InterruptedException e) {
                                 throw new RuntimeException(e);
                             }
-                        }
-                    } else {
-                        rmsg.setPerformative(ACLMessage.FAILURE);
-                        send(rmsg);
-                    }
-                    break;
-                case ACLMessage.CONFIRM:
-                    try {
-                        String storyName =  msg.getContent();
-                        stories.forEach(e -> {
-                            if (e.getName().equals(storyName)){
-                                if (e.getState() != State.Done) {
-                                    e.setState(State.Done);
-                                    System.out.println(e.getName() + " is finished by " + msg.getSender().getLocalName());
+
+                            rmsg.setPerformative(ACLMessage.AGREE);
+                            rmsg.addReceiver(msg.getSender());
+                            rmsg.setSender(myAgent.getAID());
+                            rmsg.setLanguage(codec.getName());
+                            rmsg.setOntology(ontology.getName());
+
+                            if (story != null) {
+                                wo = new PreWorkOrder();
+                                wo.setStory(story);
+                                wo.setOwner(msg.getSender());
+                                try {
+                                    getContentManager().fillContent(rmsg, wo);
+                                    //System.out.println(rmsg);
+                                    send(rmsg);
+                                } catch (Exception e) {
+                                    throw new RuntimeException(e);
                                 }
                             }
-                        });
-                    } catch (Exception e) {
-                        throw new RuntimeException(e);
-                    }
-                    break;
-                default:
-                    block();
-                    break;
+                        } else {
+                            finished = true;
+                            rmsg.setPerformative(ACLMessage.FAILURE);
+                            send(rmsg);
+                        }
+                        break;
+                    case ACLMessage.CONFIRM:
+                        try {
+                            String storyName = msg.getContent();
+                            sprintQueue.forEach(e -> {
+                                if (e.getName().equals(storyName)) {
+                                    if (e.getState() != State.Done) {
+                                        e.setState(State.Done);
+                                        System.out.println(e.getName() + " is finished by " + msg.getSender().getLocalName());
+                                    }
+                                }
+                            });
+                        } catch (Exception e) {
+                            throw new RuntimeException(e);
+                        }
+                        break;
+                    default:
+                        block();
+                        break;
+                }
             }
         }
 
         @Override
         public boolean done() {
-            return false;
+            return finished;
+        }
+    }
+
+    public class RequestProductBacklog extends Behaviour {
+        private ScrumBoardAgent mySBAgent;
+
+        RequestProductBacklog(Agent agent) {
+            super(agent);
+            this.mySBAgent = (ScrumBoardAgent) agent;
+        }
+
+        @Override
+        public void action() {
+            //Request Product Backlog
+            finished = false;
+            System.out.println("Requesting Product Backlog");
+            SequentialBehaviour productBacklog = new SequentialBehaviour(mySBAgent);
+
+            Behaviour requestProductBacklog = new Request(mySBAgent, productOwnerAID, ontology, "story");
+            //CyclicBehaviour messageReceiver = new MessageReceiver();
+            SimpleBehaviour messageHandler = new ScrumBoardMessageHandler(mySBAgent);
+
+            requestProductBacklog.setDataStore(productBacklog.getDataStore());
+            //messageReceiver.setDataStore(productBacklog.getDataStore());
+            messageHandler.setDataStore(productBacklog.getDataStore());
+
+            productBacklog.addSubBehaviour(requestProductBacklog);
+            //productBacklog.addSubBehaviour(messageReceiver);
+            productBacklog.addSubBehaviour(messageHandler);
+
+            addBehaviour(productBacklog);
+        }
+
+        @Override
+        public boolean done() {
+            if (productBackLog.size() == 0) {
+                return false;
+            } else {
+                return true;
+            }
+        }
+    }
+
+    public class Sprint extends Behaviour {
+        private ScrumBoardAgent mySBAgent;
+        private Boolean finished = false;
+
+        Sprint(Agent agent) {
+            super(agent);
+            this.mySBAgent = (ScrumBoardAgent) agent;
+        }
+
+        @Override
+        public void action() {
+            block(2000);
+            sprintNr++;
+            System.out.println("Sprint nr " + sprintNr + " being prepaired");
+            SequentialBehaviour sprintBehaviour = new SequentialBehaviour(myAgent);
+
+            //preperations to start sprint
+            //Behaviour requestSkill = new RequestSkill(myAgent);
+            Behaviour requestSprintBacklog = new RequestSprintBacklog(myAgent);
+
+            //sprintBehaviour.addSubBehaviour(requestProductBacklog);
+
+            if (receivedSpringBacklog == false) {
+                sprintBehaviour.addSubBehaviour(requestSprintBacklog);
+            }
+            //start sprint
+            Behaviour startSprint = new StartSprint(myAgent);
+            sprintBehaviour.addSubBehaviour(startSprint);
+
+            block(1000);
+            if (productBackLog.size() == 0) {
+                projectFinished = true;
+            }
+            if (sprintQueue.size() == 0) {
+                receivedSpringBacklog = false;
+                sprintFinished = true;
+                finished = true;
+            }
+            if (sprintFinished == false/* && productBackLog.size() != 0*/) {
+                finished = false;
+                ScrumBoardMessageHandler messageHandler = new ScrumBoardMessageHandler(myAgent);
+                sprintBehaviour.addSubBehaviour(messageHandler);
+            }
+
+            addBehaviour(sprintBehaviour);
+        }
+
+        @Override
+        public boolean done() {
+            if (projectFinished== true) {
+                System.out.println("Project Finished");
+                block(1000);
+                return true;
+            } else {
+                return finished;
+            }
+        }
+    }
+
+    public class RequestSkill extends Behaviour {
+        private ScrumBoardAgent mySBAgent;
+
+        RequestSkill(Agent agent) {
+            super(agent);
+            this.mySBAgent = (ScrumBoardAgent) agent;
+        }
+
+        @Override
+        public void action() {
+            //Request Skill
+            block(3000);
+            System.out.println("Requesting Skill");
+            finished = false;
+
+            SequentialBehaviour skill = new SequentialBehaviour(mySBAgent);
+
+            for (AID aid : Controller.getDevAgents()) {
+                Behaviour requestSkill = new Request(mySBAgent, aid, ontology, "story");
+                requestSkill.setDataStore(skill.getDataStore());
+                skill.addSubBehaviour(requestSkill);
+            }
+
+            SimpleBehaviour messageHandler = new ScrumBoardMessageHandler(mySBAgent);
+            messageHandler.setDataStore(skill.getDataStore());
+
+            skill.addSubBehaviour(messageHandler);
+
+            addBehaviour(skill);
+
+
+            for (int i = 0; i < devSkills.length; i++) {
+                System.out.println("Dev " + (i + 1) + " skill: " + devSkills[i]);
+            }
+
+        }
+
+        @Override
+        public boolean done() {
+            return true;
+        }
+    }
+
+    public class RequestSprintBacklog extends Behaviour {
+        private ScrumBoardAgent mySBAgent;
+
+        RequestSprintBacklog(Agent agent) {
+            super(agent);
+            this.mySBAgent = (ScrumBoardAgent) agent;
+            finished = false;
+        }
+
+        @Override
+        public void action() {
+
+            System.out.println("Requesting Sprint Backlog");
+            SequentialBehaviour sprintBacklog = new SequentialBehaviour(mySBAgent);
+
+            PreRequestSprintBacklog preRequestSprintBacklog = new PreRequestSprintBacklog();
+            int sum = 0;
+            //Loop through the array to calculate sum of elements
+            for (int i = 0; i < devSkills.length; i++) {
+                sum = sum + devSkills[i];
+            }
+            preRequestSprintBacklog.setSkill(Arrays.stream(devSkills).sum());
+            preRequestSprintBacklog.setStoryArrayList(productBackLog);
+            preRequestSprintBacklog.setNbStoriesInSprint(nbStoriesInSprint);
+
+            Request request = new Request(mySBAgent, scrumMasterAID, ontology, preRequestSprintBacklog);
+            ScrumBoardMessageHandler messageHandler = new ScrumBoardMessageHandler(mySBAgent);
+
+            sprintBacklog.addSubBehaviour(request);
+            sprintBacklog.addSubBehaviour(messageHandler);
+
+            addBehaviour(sprintBacklog);
+            block(2000);
+        }
+
+        @Override
+        public boolean done() {
+            return finished;
+        }
+    }
+
+    public class StartSprint extends Behaviour {
+        private ScrumBoardAgent mySBAgent;
+
+        StartSprint(Agent agent) {
+            super(agent);
+            this.mySBAgent = (ScrumBoardAgent) agent;
+        }
+
+        @Override
+        public void action() {
+            //Request Skill
+            block(2000);
+            System.out.println("Starting Sprint " + sprintNr);
+            finished = false;
+
+
+            for (AID aid : Controller.getDevAgents()) {
+                ACLMessage msg = new ACLMessage(ACLMessage.INFORM);
+                msg.addReceiver(aid);
+                msg.setLanguage(codec.getName());
+                msg.setOntology(ontology.getName());
+                msg.setContent("startSprint");
+                msg.setSender(mySBAgent.getAID());
+
+                mySBAgent.send(msg);
+            }
+        }
+
+        @Override
+        public boolean done() {
+            return true;
         }
     }
 
@@ -205,7 +493,7 @@ public class ScrumBoardAgent extends Agent {
             ACLMessage msg = new ACLMessage(ACLMessage.CANCEL);
 
             for (int i = 1; i < Controller.nbDevAgents + 1; i++) {
-                msg.addReceiver(new AID(Controller.DevAgentName + i, AID.ISLOCALNAME));
+                msg.addReceiver(new AID(Controller.devAgentName + i, AID.ISLOCALNAME));
             }
 
             msg.setSender(myAgent.getAID());
@@ -220,40 +508,10 @@ public class ScrumBoardAgent extends Agent {
         }
     }
 
-    private void listFillere() {
-        for (int i = 1; i < nbStoriesToGen + 1; i++) {
-            ArrayList<Task> tasks = new ArrayList<>();
-            int rand = new Random().nextInt(1, nbTasks + 1);
-            int randPri = new Random().nextInt(1, 6);
-            for (int y = 1; y < rand + 1; y++) {
-                tasks.add(utils.taskGen("Task nr. " + y));
-            }
-            Story story = new Story();
-
-            story.setName("Story nr. " + i);
-            story.setPriority(randPri);
-            story.setTasks(tasks);
-            story.setState(State.Product);
-
-            stories.add(story);
-        }
-        System.out.println();
-    }
-
-    private void fillSprintQueue() {
-        AtomicInteger count = new AtomicInteger();
-        stories.forEach((story) -> {
-            if(count.get() < nbStoriesInSprint){
-                story.setState(State.Sprint);
-                sprintQueue.add(story);
-                count.addAndGet(1);
-            }
-        });
-    }
 
     public int getTotalSize(State state) {
         int sum = 0;
-        for (Story story : stories) {
+        for (Story story : sprintQueue) {
             if (story.getState() == state) {
                 sum = sum + story.getTotalSize();
             }
@@ -269,14 +527,13 @@ public class ScrumBoardAgent extends Agent {
     }
 
     public Story getFirstFreeStory(AID name) {
-        for (Story s : stories) {
+        for (Story s : sprintQueue) {
             if (s.getState() == State.Product) {
-                if (s.getWorkingagent() == null){
+                if (s.getWorkingagent() == null) {
                     s.setState(State.Doing);
                     s.setWorkingagent(name);
                     return s;
                 }
-
             }
         }
         return null;

@@ -1,0 +1,45 @@
+@startuml
+class Items.WorkOrder {
+- {static} long serialVersionUID
+- AID owner
+- Story item
++ AID getOwner()
++ void setOwner(AID)
++ Story getStory()
++ void setStory(Story)
+}
+class Items.Story {
+- {static} long serialVersionUID
+- String name
++ ArrayList<Task> tasks
+- int priority
+- State state
+- AID workingagent
++ String toString()
++ int getTotalSize()
++ String getName()
++ void setName(String)
++ int getPriority()
++ void setPriority(int)
++ State getState()
++ void setState(State)
++ AID getWorkingagent()
++ void setWorkingagent(AID)
++ ArrayList<Task> getTasks()
++ void setTasks(ArrayList<Task>)
+}
+class Items.Task {
+~ String naam
+~ int size
++ String toString()
++ String getNaam()
++ void setNaam(String)
++ int getSize()
++ void setSize(int)
+}
+
+
+jade.content.Predicate <|.. Items.WorkOrder
+jade.content.Concept <|.. Items.Story
+jade.content.Concept <|.. Items.Task
+@enduml

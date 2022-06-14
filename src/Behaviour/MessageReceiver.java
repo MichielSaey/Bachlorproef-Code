@@ -1,17 +1,13 @@
 package Behaviour;
 
 import Domein.ScrumBoardAgent;
+import jade.core.behaviours.CyclicBehaviour;
 import jade.core.behaviours.SimpleBehaviour;
 import jade.lang.acl.ACLMessage;
 
-public class MessageReceiver extends SimpleBehaviour {
+public class MessageReceiver extends CyclicBehaviour {
     public static final String RECV_MSG = "received-message";
     private boolean finished = false;
-
-    public MessageReceiver() {
-
-    }
-
     public void action() {
         ACLMessage msg = myAgent.receive();
         if (msg!= null) {
@@ -21,8 +17,5 @@ public class MessageReceiver extends SimpleBehaviour {
         } else {
             block();
         }
-    }
-    public boolean done() {
-        return finished;
     }
 }
